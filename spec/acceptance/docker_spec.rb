@@ -1,16 +1,7 @@
 require 'spec_helper_acceptance'
 
 describe 'docker' do
-  case fact('osfamily')
-  when 'RedHat'
-    package_name = if fact('operatingsystemrelease').to_f >= 7
-      'docker'
-    else
-      'docker-io'
-    end
-  else
-    package_name = 'lxc-docker'
-  end
+  package_name = 'docker-engine'
   service_name = 'docker'
   command = 'docker'
 
@@ -22,7 +13,7 @@ describe 'docker' do
   context 'with default parameters' do
     let(:pp) {"
         class { 'docker':
-          docker_users => [ 'testuser' ]
+          docker_users => [ 'testuser' ],
         }
         docker::image { 'nginx': }
         docker::run { 'nginx':
@@ -33,11 +24,6 @@ describe 'docker' do
         docker::run { 'nginx2':
           image   => 'nginx',
           restart => 'always',
-          require => Docker::Image['nginx'],
-        }
-        docker::run { 'nginx3':
-          image   => 'nginx',
-          use_name => true,
           require => Docker::Image['nginx'],
         }
     "}
@@ -61,7 +47,6 @@ describe 'docker' do
 
     describe command("#{command} version") do
       its(:exit_status) { should eq 0 }
-      its(:stdout) { should match /Client version:/ }
     end
 
     describe command("#{command} images"), :sudo => true do
@@ -69,17 +54,11 @@ describe 'docker' do
       its(:stdout) { should match /nginx/ }
     end
 
-    describe command("#{command} ps -l --no-trunc=true"), :sudo => true do
+    describe command("#{command} inspect nginx"), :sudo => true do
       its(:exit_status) { should eq 0 }
-      its(:stdout) { should match /nginx -g 'daemon off;'/ }
     end
 
-    describe command("#{command} ps"), :sudo => true do
-      its(:exit_status) { should eq 0 }
-      its(:stdout) { should match /nginx3/ }
-    end
-
-    describe command("#{command} inspect nginx3"), :sudo => true do
+    describe command("#{command} inspect nginx2"), :sudo => true do
       its(:exit_status) { should eq 0 }
     end
 
@@ -105,7 +84,7 @@ describe 'docker' do
       registry_port = 5000
       @registry_address = "#{registry_host}:#{registry_port}"
       @registry_email = 'user@example.com'
-      @config_file = shell('docker --version|cut -d"/" -f2').stdout < "1.7" ? '~/.dockercfg' : '~/.docker/config.json'
+      @config_file = '/root/.docker/config.json'
       @manifest = <<-EOS
         class { 'docker': }
         docker::run { 'registry':
@@ -119,10 +98,10 @@ describe 'docker' do
       apply_manifest(@manifest, :catch_failures=>true)
       # avoid a race condition with the registry taking time to start
       # on some operating systems
-      sleep 4
+      sleep 10
     end
 
-    it 'should be able to login to the registry' do
+    it 'should be able to login to the registry', :retry => 3, :retry_wait => 10 do
       manifest = <<-EOS
         docker::registry { '#{@registry_address}':
           username => 'username',
