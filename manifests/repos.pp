@@ -16,7 +16,7 @@ class docker::repos {
       # Package['apt-transport-https'] -> Apt::Source <||>
  
       if $::operatingsystem == 'Debian' and $::lsbdistcodename == 'wheezy' {
-        include apt::backports
+        include debian::backports
       }
       Exec['apt_update'] -> Package[$docker::prerequired_packages]
       if ($docker::use_upstream_package_source) {
