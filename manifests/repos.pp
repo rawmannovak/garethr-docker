@@ -9,7 +9,7 @@ class docker::repos {
     'Debian': {
       include apt
       # apt-transport-https is required by the apt to get the sources
-      ensure_packages(['apt-transport-https'])
+      #ensure_packages(['apt-transport-https'])
  
       # this statement currently results a cyrcular dependency conflict:
       # see: https://github.com/garethr/garethr-docker/issues/369
